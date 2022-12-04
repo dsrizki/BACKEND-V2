@@ -50,8 +50,47 @@ router.use('/import-data', async (req, res) => {
 router.use('/edit-repacking-data', async (req, res) => {
   // Silahkan dikerjakan disini.
 
-  // TODO Get Payload, Rejected QR List, New QR List from request body
+  // TODO Get Payload, Rejected QR List, New QR List from req body
   const { payload, reject_qr_list, new_qr_list } = req.body;
+
+  // TODO Validate Payload, Rejected QR List, New QR List from from req body
+
+  // TODO looping as much as reject_qr_list length from req body
+  for (let i = 0; i < reject_qr_list.length; i++) {
+    // console.log(reject_qr_list[i].payload);
+    const filter = {
+      payload: payload,
+      qr_list: { $elemMatch: { payload: reject_qr_list[i].payload } },
+    };
+
+    const list = await stock_read_log
+      .aggregate([
+        {
+          $match: filter,
+        },
+      ])
+      .exec();
+    // console.log(list);
+    // console.log('------------------------------------------------------------');
+  }
+
+  // TODO looping as much as new_qr_list length from req body
+  for (let i = 0; i < new_qr_list.length; i++) {
+    // console.log(new_qr_list[i].payload);
+    const filter = {
+      qr_list: { $elemMatch: { payload: new_qr_list[i].payload } },
+    };
+
+    const list = await stock_read_log
+      .aggregate([
+        {
+          $match: filter,
+        },
+      ])
+      .exec();
+    // console.log(list);
+    // console.log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+  }
 
   const filter = {};
 
@@ -62,8 +101,6 @@ router.use('/edit-repacking-data', async (req, res) => {
       },
     ])
     .exec();
-
-  console.log(list.length);
 
   res.json(list);
 });
