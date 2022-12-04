@@ -63,15 +63,18 @@ router.use('/edit-repacking-data', async (req, res) => {
       qr_list: { $elemMatch: { payload: reject_qr_list[i].payload } },
     };
 
-    const list = await stock_read_log
+    const isRejectedQRListExist = await stock_read_log
       .aggregate([
         {
           $match: filter,
         },
       ])
       .exec();
-    // console.log(list);
-    // console.log('------------------------------------------------------------');
+    if (!isRejectedQRListExist.length) {
+      return res.status(404).json({
+        message: 'Rejected QR List not found',
+      });
+    }
   }
 
   // TODO looping as much as new_qr_list length from req body
@@ -81,15 +84,18 @@ router.use('/edit-repacking-data', async (req, res) => {
       qr_list: { $elemMatch: { payload: new_qr_list[i].payload } },
     };
 
-    const list = await stock_read_log
+    const isNewQRListExist = await stock_read_log
       .aggregate([
         {
           $match: filter,
         },
       ])
       .exec();
-    // console.log(list);
-    // console.log('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+    if (!isNewQRListExist.length) {
+      return res.status(404).json({
+        message: 'New QR List not found',
+      });
+    }
   }
 
   const filter = {};
