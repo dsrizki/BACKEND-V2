@@ -48,13 +48,15 @@ router.use('/import-data', async (req, res) => {
 });
 
 router.use('/all', async (req, res) => {
-  const { payload } = req.body;
-
+  const { payload, reject_qr_list, new_qr_list } = req.body;
   const filter = {
-    payload: payload,
+    // payload: payload,
+    // qr_list: { $elemMatch: { payload: reject_qr_list[1].payload } },
+    // qr_list: { $elemMatch: { payload: new_qr_list[0].payload } },
+    payload: 'PWAPJ.VI.AW.CXWX400.0600-2211-00036',
+    // payload: 'PWAPJ.VI.AW.CXWX400.0600-2211-00037',
   };
-
-  const [list] = await stock_read_log
+  const list = await stock_read_log
     .aggregate([
       {
         $match: filter,
@@ -134,7 +136,16 @@ router.use('/edit-repacking-data', async (req, res) => {
     const [filtered] = newQRList.qr_list.filter(
       (newQR) => newQR.payload === new_qr_list[i].payload
     );
-    // console.log(filtered, 'data setelah di map');
+
+    await stock_read_log.updateOne(
+      { qr_list: { $elemMatch: { payload: new_qr_list[i].payload } } },
+      {
+        $pull: {
+          qr_list: { payload: new_qr_list[i].payload },
+        },
+        $inc: { qty: -1 },
+      }
+    );
 
     const updated = await stock_read_log.findOneAndUpdate(
       { payload: payload },
@@ -178,20 +189,7 @@ router.use('/edit-repacking-data', async (req, res) => {
 
   // TODO Decrement the payload qty
 
-  const filter = {
-    payload: payload,
-    // qr_list: { $elemMatch: { payload: reject_qr_list[1].payload } },
-    // qr_list: { $elemMatch: { payload: new_qr_list[1].payload } },
-  };
-  const list = await stock_read_log
-    .aggregate([
-      {
-        $match: filter,
-      },
-    ])
-    .exec();
-
-  res.json(list);
+  res.json('OK');
 });
 
 router.use('/', function (req, res, next) {
