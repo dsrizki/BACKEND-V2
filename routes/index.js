@@ -47,6 +47,23 @@ router.use('/import-data', async (req, res) => {
   });
 });
 
+router.use('/all', async (req, res) => {
+  const { payload } = req.body;
+
+  const filter = {
+    payload: payload,
+  };
+
+  const [list] = await stock_read_log
+    .aggregate([
+      {
+        $match: filter,
+      },
+    ])
+    .exec();
+  res.json(list);
+});
+
 router.use('/edit-repacking-data', async (req, res) => {
   // Silahkan dikerjakan disini.
 
@@ -57,7 +74,6 @@ router.use('/edit-repacking-data', async (req, res) => {
 
   // TODO looping as much as reject_qr_list length from req body
   for (let i = 0; i < reject_qr_list.length; i++) {
-    // console.log(reject_qr_list[i].payload);
     const filter = {
       payload: payload,
       qr_list: { $elemMatch: { payload: reject_qr_list[i].payload } },
@@ -75,11 +91,11 @@ router.use('/edit-repacking-data', async (req, res) => {
         message: 'Rejected QR List not found',
       });
     }
+    // console.log(isRejectedQRListExist);
   }
 
   // TODO looping as much as new_qr_list length from req body
   for (let i = 0; i < new_qr_list.length; i++) {
-    // console.log(new_qr_list[i].payload);
     const filter = {
       qr_list: { $elemMatch: { payload: new_qr_list[i].payload } },
     };
@@ -96,10 +112,77 @@ router.use('/edit-repacking-data', async (req, res) => {
         message: 'New QR List not found',
       });
     }
+    // console.log(isNewQRListExist);
   }
 
-  const filter = {};
+  //! TODO MAKE IT 1 FUNCTION
+  // TODO Add New QR List from request body New QR List
+  for (let i = 0; i < new_qr_list.length; i++) {
+    // console.log(new_qr_list[i].payload);
+    const filter = {
+      qr_list: { $elemMatch: { payload: new_qr_list[i].payload } },
+    };
 
+    const [newQRList] = await stock_read_log
+      .aggregate([
+        {
+          $match: filter,
+        },
+      ])
+      .exec();
+    // console.log(newQRList.qr_list);
+    const [filtered] = newQRList.qr_list.filter(
+      (newQR) => newQR.payload === new_qr_list[i].payload
+    );
+    // console.log(filtered, 'data setelah di map');
+
+    const updated = await stock_read_log.findOneAndUpdate(
+      { payload: payload },
+      {
+        $inc: { qty: 1 },
+        $push: { qr_list: filtered },
+      }
+    );
+    console.log('masuk pak eko');
+    // console.log(updated);
+
+    // TODO Remove Rejected QR List
+    console.log(reject_qr_list[i].payload);
+    const deleteItem = await stock_read_log.updateOne(
+      { qr_list: { $elemMatch: { payload: reject_qr_list[i].payload } } },
+      {
+        $pull: {
+          qr_list: { payload: reject_qr_list[i].payload },
+        },
+        $inc: { qty: -1 },
+      }
+    );
+    console.log(deleteItem);
+  }
+  //! TODO MAKE IT 1 FUNCTION
+
+  // TODO Update Rejected QR List status to rejected based on request body
+  // for (let i = 0; i < reject_qr_list.length; i++) {
+  //   console.log(reject_qr_list[i].payload);
+  //   const updated = await stock_read_log.updateOne(
+  //     { 'qr_list.payload': reject_qr_list[i].payload },
+  //     {
+  //       $set: { 'qr_list.$.status': 0, 'qr_list.$.status_qc': 1 },
+  //     }
+  //   );
+  // }
+
+  // TODO Remove QR list that rejected based on request body
+
+  // TODO Remove QR List that inserted based on request body New QR List
+
+  // TODO Decrement the payload qty
+
+  const filter = {
+    payload: payload,
+    // qr_list: { $elemMatch: { payload: reject_qr_list[1].payload } },
+    // qr_list: { $elemMatch: { payload: new_qr_list[1].payload } },
+  };
   const list = await stock_read_log
     .aggregate([
       {
